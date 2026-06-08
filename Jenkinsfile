@@ -9,24 +9,25 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+        stage('Checkout Source Code') {
             steps {
-                git branch: 'main',
-                url: 'https://github.com/Kiran-krt/practice_k8s.git'
+                git(
+                    branch: 'main',
+                    url: 'https://github.com/Kiran-krt/practice_k8s.git'
+                )
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 sh """
-                docker build -t $IMAGE_NAME:$TAG .
+                    docker build -t ${IMAGE_NAME}:${TAG} .
                 """
             }
         }
 
         stage('Push Docker Image') {
             steps {
-
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'dockerhub-creds',
@@ -36,39 +37,49 @@ pipeline {
                 ]) {
 
                     sh """
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
 
-                    docker push $IMAGE_NAME:$TAG
+                        docker push ${IMAGE_NAME}:${TAG}
+
+                        docker logout
                     """
                 }
             }
         }
 
-        stage('Update Manifest Repo') {
-
+        stage('Update Manifest Repository') {
             steps {
 
-                sh """
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_TOKEN'
+                    )
+                ]) {
 
-                rm -rf k8s-manifests
+                    sh """
+                        rm -rf k8s-manifests
 
-                git clone https://github.com/Kiran-krt/k8s-manifests.git
+                        git clone https://\$GIT_USER:\$GIT_TOKEN@github.com/Kiran-krt/k8s-manifests.git
 
-                cd k8s-manifests
+                        cd k8s-manifests
 
-                sed -i 's|image:.*|image: $IMAGE_NAME:$TAG|g' deployment.yaml
+                        sed -i 's|image:.*|image: ${IMAGE_NAME}:${TAG}|g' deployment.yaml
 
-                git config user.email "thoratkiran2122@gmail.com"
+                        git config user.email "thoratkiran2122@gmail.com"
+                        git config user.name "Kiran-krt"
 
-                git config user.name "Kiran-krt"
+                        git add deployment.yaml
 
-                git add deployment.yaml
-
-                git commit -m "Updated image $TAG"
-
-                git push
-
-                """
+                        if git diff --cached --quiet; then
+                            echo "No changes detected in deployment.yaml"
+                        else
+                            git commit -m "Update image tag to ${TAG}"
+                            git push origin main
+                        fi
+                    """
+                }
             }
         }
     }
@@ -76,11 +87,15 @@ pipeline {
     post {
 
         success {
-            echo 'Build completed'
+            echo 'Pipeline completed successfully'
         }
 
         failure {
-            echo 'Build failed'
+            echo 'Pipeline failed'
+        }
+
+        always {
+            cleanWs()
         }
     }
 }
