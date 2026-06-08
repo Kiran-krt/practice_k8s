@@ -4,7 +4,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "kiranthorat8419/nodejs-app"
-        TAG = "${BUILD_NUMBER}"
+        // TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -19,7 +19,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh """
-                docker build -t $IMAGE_NAME:$TAG .
+                docker build -t $IMAGE_NAME:11 .
                 """
             }
         }
@@ -38,7 +38,7 @@ pipeline {
                     sh """
                     echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
 
-                    docker push $IMAGE_NAME:$TAG
+                    docker push $IMAGE_NAME:11
                     """
                 }
             }
@@ -56,15 +56,15 @@ pipeline {
 
                 cd k8s-manifests
 
-                sed -i 's|image:.*|image: $IMAGE_NAME:$TAG|g' deployment.yaml
+                sed -i 's|image:.*|image: $IMAGE_NAME:11|g' deployment.yaml
 
-                // git config user.email "jenkins@example.com"
+                git config user.email "thoratkiran2122@gmail.com"
 
-                // git config user.name "jenkins"
+                git config user.name "Kiran-krt"
 
                 git add deployment.yaml
 
-                git commit -m "Updated image $TAG"
+                git commit -m "Updated image 11"
 
                 git push
 
