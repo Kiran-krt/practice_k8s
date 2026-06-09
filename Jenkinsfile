@@ -2,6 +2,10 @@ pipeline {
 
     agent any
 
+    triggers {
+        githubPush()
+    }
+
     environment {
         IMAGE_NAME = "kiranthorat8419/nodejs-app"
         TAG = "${BUILD_NUMBER}"
